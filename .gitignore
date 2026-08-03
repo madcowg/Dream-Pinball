@@ -1,0 +1,17 @@
+# Roblox Studio files generated for local testing
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+*.lock
+
+# Tool output
+*.log
+.DS_Store
+Thumbs.db
+
+# Local agent settings
+CLAUDE.local.md
+.env
+.env.*
+!.env.example
