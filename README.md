@@ -1,6 +1,6 @@
 # Dream Pinball
 
-A Roblox game by Gabe and his son, configured for collaboration through Roblox Studio, Codex, and Claude Code.
+A Roblox game by Gabe & Lucas, configured for collaboration through Roblox Studio, Codex, and Claude Code.
 
 ## Required applications
 
