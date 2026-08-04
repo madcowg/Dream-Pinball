@@ -14,14 +14,14 @@ Open this repository as the working directory when starting Codex or Claude Code
 
 ## Connect Roblox Studio
 
-Create or open the Dream Pinball experience in Roblox Studio. For each row below, select the Studio container in Explorer, right-click it, choose **Sync to...**, and select the corresponding local directory.
+Script Sync setup is complete and verified. For each row below, select the Studio container in Explorer, right-click it, choose **Sync to...**, and select the corresponding local directory.
 
 | Studio container | Local directory |
 | --- | --- |
-| `ReplicatedStorage` | `src/ReplicatedStorage` |
-| `ServerScriptService` | `src/ServerScriptService` |
-| `StarterPlayer > StarterPlayerScripts` | `src/StarterPlayerScripts` |
-| `StarterGui` | `src/StarterGui` |
+| `ReplicatedStorage` | `src/ReplicatedStorage/DreamPinballShared` |
+| `ServerScriptService` | `src/ServerScriptService/DreamPinballServer` |
+| `StarterPlayer > StarterPlayerScripts` | `src/StarterPlayerScripts/DreamPinballClient` |
+| `StarterGui` | `src/StarterGui/DreamPinballUI` |
 
 Resolve the first sync in favor of Studio if Studio already contains scripts that are not present locally. Review the conflict list before confirming.
 
@@ -37,14 +37,14 @@ Open the repository in VS Code and accept the recommended extensions. The worksp
 
 ## Agent workflow
 
-Use one agent as the implementer and the other as the reviewer. Do not let both edit the same feature concurrently.
+Claude Code is the primary implementer. Codex performs read-only review unless explicitly assigned implementation. Do not let both edit the same feature concurrently.
 
 1. Define one small feature and its observable success criteria.
-2. Ask Codex or Claude Code to inspect the relevant files and implement it.
+2. Ask Claude Code to inspect the relevant files and implement it.
 3. Review the diff before accepting it.
 4. Test it in Roblox Studio.
-5. Give the exact Studio errors and observed behavior back to the implementing agent.
-6. Ask the other agent for a read-only review.
+5. Give the exact Studio errors and observed behavior back to Claude Code.
+6. Ask Codex for a read-only review.
 7. Apply approved findings and commit the tested version.
 
 ## Feature request template

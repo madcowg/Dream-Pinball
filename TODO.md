@@ -2,11 +2,11 @@
 
 ## Setup
 
-- [ ] Connect the four `src/` directories to Roblox Studio using Script Sync.
+- [x] Connect the four `src/` directories to Roblox Studio using Script Sync.
 - [ ] Install the recommended VS Code extensions.
 - [ ] Confirm StyLua formatting works.
 - [ ] Confirm Selene static analysis works.
-- [ ] Complete one Script Sync round trip between a local `.luau` file and Studio.
+- [x] Complete one Script Sync round trip between a local `.luau` file and Studio.
 
 ## Product definition
 

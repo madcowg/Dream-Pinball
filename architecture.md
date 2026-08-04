@@ -16,10 +16,10 @@ The gameplay concept, target devices, multiplayer model, progression, monetizati
 
 | Local directory | Roblox Studio destination | Intended contents |
 | --- | --- | --- |
-| `src/ReplicatedStorage` | `ReplicatedStorage` | Shared modules and remotes |
-| `src/ServerScriptService` | `ServerScriptService` | Server-authoritative systems |
-| `src/StarterPlayerScripts` | `StarterPlayerScripts` | Client controllers and input |
-| `src/StarterGui` | `StarterGui` | UI scripts |
+| `src/ReplicatedStorage/DreamPinballShared` | `ReplicatedStorage` | Shared modules and remotes |
+| `src/ServerScriptService/DreamPinballServer` | `ServerScriptService` | Server-authoritative systems |
+| `src/StarterPlayerScripts/DreamPinballClient` | `StarterPlayerScripts` | Client controllers and input |
+| `src/StarterGui/DreamPinballUI` | `StarterGui` | UI scripts |
 
 ## Security boundary
 
@@ -28,3 +28,6 @@ Clients request actions. The server validates permissions, state, ranges, timing
 ## Decisions
 
 Add confirmed architectural and product decisions here. Do not use this section as a wishlist.
+
+- Script Sync setup is complete. The four nested source paths above are verified against Roblox Studio.
+- Claude Code is the primary implementer. Codex performs read-only review unless explicitly assigned implementation.

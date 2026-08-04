@@ -4,6 +4,7 @@ Read `AGENTS.md`, `architecture.md`, and `TODO.md` before changing code. Follow 
 
 ## Claude Code responsibilities
 
+- Claude Code is the primary implementer for this project. Codex performs read-only review unless explicitly assigned implementation.
 - Explain proposed behavior before a large implementation.
 - Keep solutions understandable to a parent-and-child development team.
 - Preserve the established architecture and naming conventions.

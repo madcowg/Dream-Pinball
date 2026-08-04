@@ -6,7 +6,8 @@ Read `architecture.md` and `TODO.md` before changing code.
 
 - This is a Roblox game written in typed Luau.
 - Roblox Studio is used for building, playtesting, debugging, and publishing.
-- Local files are synchronized with Studio using Roblox Script Sync.
+- Local files are synchronized with Studio using Roblox Script Sync. Setup is complete; the verified synchronized paths are `src/ReplicatedStorage/DreamPinballShared`, `src/ServerScriptService/DreamPinballServer`, `src/StarterPlayerScripts/DreamPinballClient`, and `src/StarterGui/DreamPinballUI`.
+- Claude Code is the primary implementer. Codex performs read-only review unless explicitly assigned implementation.
 - Add `--!strict` to new Luau files.
 - Keep authoritative game state and validation on the server.
 - Never trust client-provided values.
