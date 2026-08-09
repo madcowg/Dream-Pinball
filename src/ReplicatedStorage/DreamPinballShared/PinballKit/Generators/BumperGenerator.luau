@@ -9,6 +9,7 @@
 
 local PrimitiveFactory = require(script.Parent.Parent.Geometry.PrimitiveFactory)
 local Scale = require(script.Parent.Parent.Scale)
+local Constants = require(script.Parent.Parent.Constants)
 local Types = require(script.Parent.Parent.Types)
 local GeometryValidator = require(script.Parent.Parent.Validation.GeometryValidator)
 
@@ -24,6 +25,11 @@ export type BumperConfig = {
 	CapColor: BrickColor?,
 	LightColor: Color3?,
 	IncludeCapLight: boolean?,
+	-- Stamped as a "PointValue" attribute on the root Model if set --
+	-- integration code (e.g. CabinetGameplay.luau) reads this per-instance
+	-- instead of one flat shared constant. Left unset here (no default): a
+	-- generator shouldn't invent a game's scoring balance.
+	PointValue: number?,
 	Material: Enum.Material?,
 	Color: BrickColor?,
 	CollisionGroup: string?,
@@ -153,6 +159,10 @@ function BumperGenerator.Generate(options: Types.GenerateOptions<BumperConfig>):
 		Parent = hierarchy.Folders.Triggers,
 		CollisionGroup = config.CollisionGroup,
 	})
+
+	if config.PointValue ~= nil then
+		hierarchy.Model:SetAttribute(Constants.POINT_VALUE_ATTRIBUTE, config.PointValue)
+	end
 
 	local parent = options.Parent or PrimitiveFactory.GetDefaultContainer(game:GetService("Workspace"))
 	PrimitiveFactory.ReplaceOrParent(parent, hierarchy.Model, options.ReplaceExisting)

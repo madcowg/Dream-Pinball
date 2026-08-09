@@ -33,6 +33,12 @@ PinballKit.Generators = {
 	TargetGenerator = require(script.Generators.TargetGenerator),
 	LightGenerator = require(script.Generators.LightGenerator),
 	ButtonGenerator = require(script.Generators.ButtonGenerator),
+	BallGenerator = require(script.Generators.BallGenerator),
+	FlipperGenerator = require(script.Generators.FlipperGenerator),
+	RoutingGenerator = require(script.Generators.RoutingGenerator),
+	CaptiveGenerator = require(script.Generators.CaptiveGenerator),
+	ObstacleGenerator = require(script.Generators.ObstacleGenerator),
+	LaneGenerator = require(script.Generators.LaneGenerator),
 }
 
 PinballKit.Presets = require(script.Presets)
@@ -45,6 +51,12 @@ PinballKit.Runtime = {
 	TargetController = require(script.Runtime.TargetController),
 	LightController = require(script.Runtime.LightController),
 	ButtonController = require(script.Runtime.ButtonController),
+	FlipperController = require(script.Runtime.FlipperController),
+	StandupTargetController = require(script.Runtime.StandupTargetController),
+	DropTargetController = require(script.Runtime.DropTargetController),
+	RoutingController = require(script.Runtime.RoutingController),
+	CaptiveController = require(script.Runtime.CaptiveController),
+	RolloverController = require(script.Runtime.RolloverController),
 }
 
 -- Demo requires its leaf dependencies directly (not this aggregator) to avoid

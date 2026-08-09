@@ -38,6 +38,14 @@ Constants.ASSET_ATTRIBUTES = {
 	GenerationId = "GenerationId",
 }
 
+-- Attribute key scoring-capable generators (Bumper, Slingshot, Spinner,
+-- Standup/DropTarget, Rollover) stamp onto their root Model when
+-- Config.PointValue is set. Game-integration code (e.g. CabinetGameplay.luau)
+-- reads this instead of hardcoding one flat score-per-hit constant, so each
+-- placed instance can award a different amount -- previously a single global
+-- placeholder value applied identically everywhere.
+Constants.POINT_VALUE_ATTRIBUTE = "PointValue"
+
 -- Longitudinal collider overlap along the direction of travel (spec section 8).
 Constants.SEGMENT_OVERLAP_MIN_STUDS = 0.05
 Constants.SEGMENT_OVERLAP_MAX_STUDS = 0.1

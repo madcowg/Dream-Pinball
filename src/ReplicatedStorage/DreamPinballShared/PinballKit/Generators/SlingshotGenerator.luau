@@ -11,6 +11,7 @@
 
 local PrimitiveFactory = require(script.Parent.Parent.Geometry.PrimitiveFactory)
 local Scale = require(script.Parent.Parent.Scale)
+local Constants = require(script.Parent.Parent.Constants)
 local Types = require(script.Parent.Parent.Types)
 local GeometryValidator = require(script.Parent.Parent.Validation.GeometryValidator)
 
@@ -33,6 +34,9 @@ export type SlingshotConfig = {
 	CollisionGroup: string?,
 	IncludeLights: boolean?,
 	LightColor: Color3?,
+	-- Stamped as a "PointValue" attribute if set -- see BumperGenerator's
+	-- Config for why this isn't defaulted here.
+	PointValue: number?,
 }
 
 local DEFAULT_WIDTH_STUDS = 3
@@ -174,6 +178,10 @@ function SlingshotGenerator.Generate(options: Types.GenerateOptions<SlingshotCon
 			light.Parent = holder
 			table.insert(lights, light)
 		end
+	end
+
+	if config.PointValue ~= nil then
+		hierarchy.Model:SetAttribute(Constants.POINT_VALUE_ATTRIBUTE, config.PointValue)
 	end
 
 	local parent = options.Parent or PrimitiveFactory.GetDefaultContainer(game:GetService("Workspace"))

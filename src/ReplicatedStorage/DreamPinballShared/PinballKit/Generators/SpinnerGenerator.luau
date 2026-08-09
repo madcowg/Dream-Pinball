@@ -9,6 +9,7 @@
 
 local PrimitiveFactory = require(script.Parent.Parent.Geometry.PrimitiveFactory)
 local Scale = require(script.Parent.Parent.Scale)
+local Constants = require(script.Parent.Parent.Constants)
 local Types = require(script.Parent.Parent.Types)
 local GeometryValidator = require(script.Parent.Parent.Validation.GeometryValidator)
 
@@ -24,12 +25,29 @@ export type SpinnerConfig = {
 	Material: Enum.Material?,
 	Color: BrickColor?,
 	CollisionGroup: string?,
+	-- Stamped as a "PointValue" attribute if set -- see BumperGenerator's
+	-- Config for why this isn't defaulted here.
+	PointValue: number?,
 }
 
 local DEFAULT_PADDLE_WIDTH_STUDS = 3
-local DEFAULT_PADDLE_HEIGHT_STUDS = 1.5
-local DEFAULT_PADDLE_THICKNESS_STUDS = 0.15
-local DEFAULT_PADDLE_DENSITY = 2
+-- Was 1.5 -- exactly the ball's own diameter, with zero vertical margin.
+-- Any small placement/alignment slop meant the ball's top or bottom edge
+-- could clip past the paddle without solid contact ("the ball can't go
+-- through" -- it was going through). 2.5 leaves real clearance above and
+-- below a 1.5-stud ball regardless of exact placement height.
+local DEFAULT_PADDLE_HEIGHT_STUDS = 2.5
+-- Was 0.15 -- a blade that thin is exactly the kind of collider a fast ball
+-- can tunnel through in a single physics step (the same failure mode
+-- documented for thin flippers in CabinetGameplay.luau -- "crossed the
+-- collision volume too fast to register"). Thicker gives the physics solver
+-- more room to actually resolve the contact before the ball passes through.
+local DEFAULT_PADDLE_THICKNESS_STUDS = 0.4
+-- Was 2 -- lighter paddle needs less of a hit to start spinning ("looser in
+-- its engagement"), and with ActuatorType.None (free-spinning, no damping by
+-- default) a lighter paddle also reads a light touch as a bigger angular
+-- velocity change, making SpinnerController's threshold easier to cross.
+local DEFAULT_PADDLE_DENSITY = 1.2
 local DEFAULT_BRACKET_HEIGHT_STUDS = 1
 
 local function validateConfig(config: SpinnerConfig)
@@ -145,6 +163,10 @@ function SpinnerGenerator.Generate(options: Types.GenerateOptions<SpinnerConfig>
 	end
 
 	hinge.Parent = hierarchy.Folders.Mechanism
+
+	if config.PointValue ~= nil then
+		hierarchy.Model:SetAttribute(Constants.POINT_VALUE_ATTRIBUTE, config.PointValue)
+	end
 
 	local parent = options.Parent or PrimitiveFactory.GetDefaultContainer(game:GetService("Workspace"))
 	PrimitiveFactory.ReplaceOrParent(parent, hierarchy.Model, options.ReplaceExisting)

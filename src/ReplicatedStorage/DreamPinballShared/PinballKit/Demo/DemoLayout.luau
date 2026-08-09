@@ -15,7 +15,6 @@
 -- PinballKit.Demo), and requiring init.luau back from here would be a
 -- circular require that Roblox's require() rejects at runtime.
 
-local Scale = require(script.Parent.Parent.Scale)
 local Presets = require(script.Parent.Parent.Presets)
 local RailGenerator = require(script.Parent.Parent.Generators.RailGenerator)
 local RampGenerator = require(script.Parent.Parent.Generators.RampGenerator)
@@ -25,12 +24,24 @@ local SlingshotGenerator = require(script.Parent.Parent.Generators.SlingshotGene
 local TargetGenerator = require(script.Parent.Parent.Generators.TargetGenerator)
 local LightGenerator = require(script.Parent.Parent.Generators.LightGenerator)
 local ButtonGenerator = require(script.Parent.Parent.Generators.ButtonGenerator)
+local BallGenerator = require(script.Parent.Parent.Generators.BallGenerator)
+local FlipperGenerator = require(script.Parent.Parent.Generators.FlipperGenerator)
+local RoutingGenerator = require(script.Parent.Parent.Generators.RoutingGenerator)
+local CaptiveGenerator = require(script.Parent.Parent.Generators.CaptiveGenerator)
+local ObstacleGenerator = require(script.Parent.Parent.Generators.ObstacleGenerator)
+local LaneGenerator = require(script.Parent.Parent.Generators.LaneGenerator)
 local SpinnerController = require(script.Parent.Parent.Runtime.SpinnerController)
 local BumperController = require(script.Parent.Parent.Runtime.BumperController)
 local SlingshotController = require(script.Parent.Parent.Runtime.SlingshotController)
 local TargetController = require(script.Parent.Parent.Runtime.TargetController)
 local LightController = require(script.Parent.Parent.Runtime.LightController)
 local ButtonController = require(script.Parent.Parent.Runtime.ButtonController)
+local FlipperController = require(script.Parent.Parent.Runtime.FlipperController)
+local StandupTargetController = require(script.Parent.Parent.Runtime.StandupTargetController)
+local DropTargetController = require(script.Parent.Parent.Runtime.DropTargetController)
+local RoutingController = require(script.Parent.Parent.Runtime.RoutingController)
+local CaptiveController = require(script.Parent.Parent.Runtime.CaptiveController)
+local RolloverController = require(script.Parent.Parent.Runtime.RolloverController)
 
 local DemoLayout = {}
 
@@ -67,21 +78,17 @@ local function labelPart(parent: Instance, position: Vector3, text: string)
 	textLabel.Parent = billboard
 end
 
+-- Delegates to BallGenerator so the demo showcases the actual tuned ball
+-- (matching CabinetDesignsTest's physics) rather than a separate ad-hoc
+-- approximation. Must run server-side -- BallGenerator.Generate calls
+-- SetNetworkOwner, which errors from client code (Command Bar execution in
+-- Studio has server-equivalent permissions, so this is safe there).
 local function spawnTestBall(parent: Instance, position: Vector3): BasePart
-	local ball = Instance.new("Part")
-	ball.Name = "TestBall"
-	ball.Shape = Enum.PartType.Ball
-	ball.Size = Vector3.new(
-		Scale.BALL_DIAMETER_STUDS,
-		Scale.BALL_DIAMETER_STUDS,
-		Scale.BALL_DIAMETER_STUDS
-	)
-	ball.Position = position
-	ball.Material = Enum.Material.SmoothPlastic
-	ball.BrickColor = BrickColor.new("Silver")
-	ball.CustomPhysicalProperties = PhysicalProperties.new(1.2, 0.3, 0.4, 1, 1)
-	ball.Parent = parent
-	return ball
+	return BallGenerator.Generate({
+		Name = "TestBall",
+		CFrame = CFrame.new(position),
+		Parent = parent,
+	})
 end
 
 local function isTestBall(part: BasePart): boolean
@@ -313,6 +320,151 @@ function DemoLayout.Generate(workspaceInstance: Instance)
 	end
 
 	LightController.RunSequence(insertHandles, 0.4, true)
+
+	-- Flipper pair, wired through CabinetBuilder's locked hinge (see
+	-- FlipperGenerator.luau) -- both share one collision group here since this
+	-- is a standalone demo pair, not a full cabinet with its own playfield
+	-- group to separate them from.
+	do
+		local slot = nextSlot()
+		local flipperCollisionGroup = "PinballKitDemoFlippers"
+		local leftAsset = FlipperGenerator.Generate({
+			Name = "DemoLeftFlipper",
+			Origin = slot * CFrame.new(-3, 0, 0),
+			Parent = container,
+			Config = Presets.Extend(Presets.WilliamsClassic.Flipper, { Side = "Left", CollisionGroup = flipperCollisionGroup }),
+		})
+		local rightAsset = FlipperGenerator.Generate({
+			Name = "DemoRightFlipper",
+			Origin = slot * CFrame.new(3, 0, 0),
+			Parent = container,
+			Config = Presets.Extend(Presets.WilliamsClassic.Flipper, { Side = "Right", CollisionGroup = flipperCollisionGroup }),
+		})
+		FlipperController.Attach(leftAsset, Presets.WilliamsClassic.FlipperRuntime.MotorSpeed)
+		FlipperController.Attach(rightAsset, Presets.WilliamsClassic.FlipperRuntime.MotorSpeed)
+		labelPart(container, slot.Position, "Flipper Pair")
+		spawnTestBall(container, slot.Position + Vector3.new(0, 3, 0))
+	end
+
+	-- Standup target.
+	do
+		local slot = nextSlot()
+		local asset = TargetGenerator.GenerateStandup({
+			Name = "DemoStandupTarget",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.StandupTarget,
+		})
+		StandupTargetController.Attach(asset, Presets.WilliamsClassic.StandupTargetRuntime, nil, isTestBall)
+		labelPart(container, slot.Position, "Standup Target")
+	end
+
+	-- Drop target bank.
+	do
+		local slot = nextSlot()
+		local asset = TargetGenerator.GenerateDropBank({
+			Name = "DemoDropTargetBank",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.DropTargetBank,
+		})
+		DropTargetController.Attach(asset, Presets.WilliamsClassic.DropTargetBankRuntime, nil, nil, isTestBall)
+		labelPart(container, slot.Position, "Drop Target Bank")
+	end
+
+	-- One-way gate.
+	do
+		local slot = nextSlot()
+		local asset = RoutingGenerator.GenerateGate({
+			Name = "DemoGate",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.Gate,
+		})
+		RoutingController.AttachGate(asset)
+		labelPart(container, slot.Position, "One-Way Gate")
+	end
+
+	-- Diverter.
+	do
+		local slot = nextSlot()
+		local asset = RoutingGenerator.GenerateDiverter({
+			Name = "DemoDiverter",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.Diverter,
+		})
+		RoutingController.AttachDiverter(asset)
+		labelPart(container, slot.Position, "Diverter")
+	end
+
+	-- Kickout hole / VUK.
+	do
+		local slot = nextSlot()
+		local asset = CaptiveGenerator.GeneratePocket({
+			Name = "DemoKickoutHole",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.KickoutHole,
+		})
+		CaptiveController.Attach(asset, Presets.WilliamsClassic.KickoutHoleRuntime, nil, nil, isTestBall)
+		labelPart(container, slot.Position, "Kickout Hole / VUK")
+		spawnTestBall(container, slot.Position + Vector3.new(0, 2, 0))
+	end
+
+	-- Ball trough / drain feed.
+	do
+		local slot = nextSlot()
+		local asset = CaptiveGenerator.GeneratePocket({
+			Name = "DemoBallTrough",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.BallTrough,
+		})
+		CaptiveController.Attach(asset, Presets.WilliamsClassic.BallTroughRuntime, nil, nil, isTestBall)
+		labelPart(container, slot.Position, "Ball Trough")
+		spawnTestBall(container, slot.Position + Vector3.new(0, 2, 0))
+	end
+
+	-- Rubber bounce post.
+	do
+		local slot = nextSlot()
+		ObstacleGenerator.GenerateRubberPost({
+			Name = "DemoRubberPost",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.RubberPost,
+		})
+		labelPart(container, slot.Position, "Rubber Post")
+	end
+
+	-- Rollover lane switch.
+	do
+		local slot = nextSlot()
+		local asset = ObstacleGenerator.GenerateRollover({
+			Name = "DemoRollover",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.WilliamsClassic.Rollover,
+		})
+		RolloverController.Attach(asset, Presets.WilliamsClassic.RolloverRuntime, nil, isTestBall)
+		labelPart(container, slot.Position, "Rollover Switch")
+	end
+
+	-- In-lane / out-lane divider wall (straight -- see LaneGenerator.luau for
+	-- the curved/tapered variant used to build a funnel-shaped divider).
+	do
+		local slot = nextSlot()
+		LaneGenerator.GenerateDivider({
+			Name = "DemoLaneDivider",
+			Origin = slot,
+			Parent = container,
+			Config = Presets.Extend(Presets.WilliamsClassic.LaneDivider, {
+				Path = { PathType = "Straight", Length = 8 },
+			}),
+		})
+		labelPart(container, slot.Position, "Lane Divider")
+	end
 
 	if existing ~= nil then
 		existing:Destroy()
