@@ -124,7 +124,10 @@ local CabinetBuilder = require(script.Parent:WaitForChild("CabinetBuilder"))
 local GameplayTuning = require(script.Parent:WaitForChild("GameplayTuning"))
 local PinballKit = script.Parent:WaitForChild("PinballKit")
 local PinballKitConstants = require(PinballKit:WaitForChild("Constants"))
+local Scale = require(PinballKit:WaitForChild("Scale"))
 local BallGenerator = require(PinballKit:WaitForChild("Generators"):WaitForChild("BallGenerator"))
+local PlungerGenerator = require(PinballKit:WaitForChild("Generators"):WaitForChild("PlungerGenerator"))
+local PlungerController = require(PinballKit:WaitForChild("Runtime"):WaitForChild("PlungerController"))
 local Ball = require(Data:WaitForChild("Ball"))
 local Item = require(Data:WaitForChild("Item"))
 local Encounter = require(Data:WaitForChild("Encounter"))
@@ -301,6 +304,20 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 	local mainFieldEntry = requireChild("MainFieldEntry") :: BasePart
 	local interactAnchor = requireChild("InteractAnchor") :: BasePart
 	local cameraAnchor = requireChild("CameraAnchor") :: BasePart
+
+	-- Cosmetic plunger rod at LaunchAnchor -- pulls back while BeginCharge is
+	-- held and springs forward on Launch, echoing the charge/release the
+	-- player already controls with R. Never touches launch velocity itself
+	-- (see PlungerGenerator.luau's header comment) -- purely visual feedback.
+	-- Origin is offset back by one ball radius so the rod's tip rests just
+	-- behind the ball's spawn point instead of inside its center.
+	local plungerAsset = PlungerGenerator.Generate({
+		Name = "LaunchPlunger",
+		Origin = launchAnchor.CFrame * CFrame.new(0, 0, Scale.BALL_DIAMETER_STUDS / 2),
+		Parent = cabinetFolder,
+		Config = {},
+	})
+	local plungerHandle = PlungerController.Attach(plungerAsset.Rod, plungerAsset.Constraint, plungerAsset.MaxRetractStuds)
 
 	-- Optional backboard display -- see module doc comment above. Each is
 	-- found independently so the team can add them one at a time; a missing
@@ -658,6 +675,11 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 		-- mean unbounded ball speed/score. See LaunchInputController.local.luau
 		-- for the plunger-charge range this mirrors (0.2-1).
 		power = math.clamp(power, 0.2, 1)
+		-- Springs the plunger forward regardless of whether this launch
+		-- attempt is actually accepted below -- the player already released
+		-- R, so the visual should always respond to that, not just to a
+		-- successful launch.
+		plungerHandle:Release(power)
 		if engagedPlayer ~= player then
 			warn(label .. ": rejected LAUNCH from " .. player.Name .. " -- not engaged with this cabinet")
 			return
@@ -879,7 +901,9 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 	prompt.Parent = interactAnchor
 
 	local handle: GameplayHandle = {
-		BeginCharge = function(_player: Player) end,
+		BeginCharge = function(_player: Player)
+			plungerHandle:BeginCharge()
+		end,
 		Launch = launch,
 		UseItem = useItem,
 		IsEngagedBy = isEngagedBy,

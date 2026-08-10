@@ -1,0 +1,33 @@
+{
+  "name": "DreamPinball",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "DreamPinballShared": {
+        "$path": "src/ReplicatedStorage/DreamPinballShared",
+        "$ignoreUnknownInstances": true
+      }
+    },
+
+    "ServerScriptService": {
+      "DreamPinballServer": {
+        "$path": "src/ServerScriptService/DreamPinballServer"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "DreamPinballClient": {
+          "$path": "src/StarterPlayerScripts/DreamPinballClient"
+        }
+      }
+    },
+
+    "StarterGui": {
+      "DreamPinballUI": {
+        "$path": "src/StarterGui/DreamPinballUI"
+      }
+    }
+  }
+}

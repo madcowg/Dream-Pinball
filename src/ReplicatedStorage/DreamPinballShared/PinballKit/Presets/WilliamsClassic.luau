@@ -35,6 +35,7 @@ local RoutingGenerator = require(script.Parent.Parent.Generators.RoutingGenerato
 local CaptiveGenerator = require(script.Parent.Parent.Generators.CaptiveGenerator)
 local ObstacleGenerator = require(script.Parent.Parent.Generators.ObstacleGenerator)
 local LaneGenerator = require(script.Parent.Parent.Generators.LaneGenerator)
+local PlungerGenerator = require(script.Parent.Parent.Generators.PlungerGenerator)
 
 local WilliamsClassic = {}
 
@@ -287,5 +288,11 @@ WilliamsClassic.LaneDivider = {
 	Material = METAL,
 	Color = BrickColor.new("Really black"),
 } :: LaneGenerator.LaneDividerConfig
+
+WilliamsClassic.Plunger = {
+	Material = METAL,
+	Color = BrickColor.new("Really black"),
+	SleeveColor = BrickColor.new("Dark stone grey"),
+} :: PlungerGenerator.PlungerConfig
 
 return WilliamsClassic

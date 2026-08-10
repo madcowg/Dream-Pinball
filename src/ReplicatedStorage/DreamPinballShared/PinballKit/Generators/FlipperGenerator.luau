@@ -30,6 +30,7 @@ local PhysicsService = game:GetService("PhysicsService")
 local CabinetBuilder = require(script.Parent.Parent.Parent.CabinetBuilder)
 local PrimitiveFactory = require(script.Parent.Parent.Geometry.PrimitiveFactory)
 local Scale = require(script.Parent.Parent.Scale)
+local Constants = require(script.Parent.Parent.Constants)
 local Types = require(script.Parent.Parent.Types)
 local GeometryValidator = require(script.Parent.Parent.Validation.GeometryValidator)
 
@@ -181,8 +182,19 @@ function FlipperGenerator.Generate(options: Types.GenerateOptions<FlipperConfig>
 	-- tip, approximated with overlapping cylinder segments (Roblox has no
 	-- native tapered-cylinder/cone shape). Purely visual -- CanCollide = false
 	-- throughout; welded to `flipper` so it moves with the hinge.
+	--
+	-- Thickness is tied to the ACTUAL spacing between adjacent segment centers
+	-- (flipperSize.X / (SEGMENT_COUNT - 1)) plus a small fixed overlap margin,
+	-- not to flipperSize.Y -- tying it to an unrelated dimension meant the
+	-- overlap ratio (thickness vs. spacing) scaled unpredictably with flipper
+	-- proportions. At WilliamsCabinet's smaller hand-built size the old
+	-- formula produced segments ~6.5x wider than the gap between them, fusing
+	-- all 26 into one solid blocky mass instead of a smooth taper. This
+	-- formula keeps the overlap ratio (and therefore the visual result)
+	-- consistent regardless of absolute flipper size.
 	local capRotation = CFrame.Angles(0, 0, math.rad(90))
-	local segmentThickness = flipperSize.Y * 1.4
+	local segmentSpacing = flipperSize.X / (SEGMENT_COUNT - 1)
+	local segmentThickness = segmentSpacing + Constants.DEFAULT_SEGMENT_OVERLAP_STUDS
 	local segmentPhysicalProperties = PhysicalProperties.new(0.01, 0.75, 0.65, 1, 1)
 
 	for i = 0, SEGMENT_COUNT - 1 do

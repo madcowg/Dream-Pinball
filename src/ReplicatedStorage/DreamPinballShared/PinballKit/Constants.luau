@@ -9,7 +9,7 @@ local Types = require(script.Parent.Types)
 
 local Constants = {}
 
-Constants.LIBRARY_VERSION = "0.1.0"
+Constants.LIBRARY_VERSION = "0.2.0"
 Constants.GENERATED_BY = "PinballKit"
 
 -- Root container every generator parents its models into by default (spec
