@@ -1,0 +1,30 @@
+# Active Handoff
+
+- Task ID: `cabinet01-scaffold-and-flipper-key-fix-2026-08-12`
+- Status: implementing (not yet playtested by anyone)
+- Active writer: Claude Code
+- Goal: (1) Fix the flipper hinge-direction bug on WilliamsCabinet + WilliamsCabinetPlayground WITHOUT touching the player-facing key mapping (Q=Left/E=Right is a locked labeling fact, not a tuning knob -- see architecture.md), and (2) stand up Cabinet01 -- a new cabinet built under `ROBLOX_AI_GAME_DEV_INSTRUCTIONS.md`'s spatial-contract discipline, coexisting with the other two, minimal "flippers first" scope.
+- Acceptance criteria:
+  - WilliamsCabinet and WilliamsCabinetPlayground: both flippers now sweep toward the table center with Q controlling the physically-left flipper and E the physically-right one (was backwards on both before this session's fix, under the same correct key mapping).
+  - `FlipperInputController.local.luau`'s `KEY_TO_SIDE` reads Q="Left"/E="Right" in the committed code -- the fix must NOT live there.
+  - Cabinet01: loads, both flippers hinge-build without error, F starts a level, Q/E flip both flippers, R launches a ball, ball can score on 2 bumpers, ball can drain, HUD reflects state.
+- Allowed files: everything listed under "Changed files" below. Nothing else.
+- Forbidden changes: no edits to `CabinetBuilder.buildFlipper`/`MOTOR_DIRECTION` (the code-built-cabinet path, confirmed behavior-neutral this session, deliberately untouched), no changes to WilliamsCabinet/WilliamsCabinetPlayground's own baked geometry, no renames of existing markers/remotes, no re-inverting `FlipperInputController.local.luau`'s `KEY_TO_SIDE` for any flipper-direction symptom.
+- Spatial contract: see `SCENE_SPEC.md`'s "Instance map: Cabinet01" section and `Cabinet01Builder.luau`'s own doc comment.
+- Interaction contract: see `INTERACTIONS.md`'s "Flipper", "Start Level", "Launch" sections (all three cabinets share the same contract via `CabinetGameplay.luau`).
+- Cabinet lighting rule: not yet applicable -- Cabinet01 has no cosmetic interior lighting built yet (`InteriorLights` folder is empty). Apply the interior `CastShadow=false`/`Shadows=false` policy from `ROBLOX_AI_GAME_DEV_INSTRUCTIONS.md` section 1A when that work starts.
+- Inputs reviewed: `TODO.md`, `architecture.md`, `CabinetGameplay.luau`, `CabinetBuilder.luau`, `GameplayTuning.luau`, `MirrorTransform.luau`, `WilliamsCabinetPlayground.server.luau`, `FlipperInputController.local.luau`, plus two rounds of live-testing feedback from the user: (1) flippers backwards on both WilliamsCabinet and WilliamsCabinetPlayground under a "natural" Q=Left/E=Right mapping, and (2) explicit direction that the key mapping itself must stay Q=Left/E=Right in the code regardless of that finding -- the fix belongs at the wiring/hinge level, not the key-labeling level.
+- Changed files:
+  - `src/StarterPlayerScripts/DreamPinballClient/FlipperInputController.local.luau` -- `KEY_TO_SIDE` is Q="Left"/E="Right" (natural, locked) with a comment explaining it must never be inverted to compensate for a wiring bug.
+  - `src/ReplicatedStorage/DreamPinballShared/CabinetBuilder.luau` -- flipped `SWEEP_DIRECTION` from `{ Left = -1, Right = 1 }` to `{ Left = 1, Right = -1 }`. This is the actual fix location -- shared by every hand-built/marker-built cabinet's hinge (`attachFlipperHinge`), so it covers WilliamsCabinet, WilliamsCabinetPlayground, and Cabinet01 in one change.
+  - `architecture.md` -- key mapping note rewritten as a locked fact (not a tuning note); `SWEEP_DIRECTION` line updated to the new value with the 2026-08-12 history.
+  - `src/ReplicatedStorage/DreamPinballShared/CabinetGameplay.luau` -- bug fix: `isExcludedFromAutoAnchor` now also excludes the flipper container itself (not just its descendants), fixing a latent break when a `LeftFlipper`/`RightFlipper` marker is a bare Part rather than a Model (exactly Cabinet01's case).
+  - `src/ReplicatedStorage/DreamPinballShared/Cabinet01Builder.luau` -- new. Builds Cabinet01's static geometry + markers; doc comment updated to point at `SWEEP_DIRECTION`, not the key mapping, for any flipper-direction symptom.
+  - `src/ServerScriptService/DreamPinballServer/Cabinet01.server.luau` -- new. Wires Cabinet01 via `CabinetGameplay.setup`, auto-builds via `Cabinet01Builder` if missing.
+  - `SCENE_SPEC.md`, `INTERACTIONS.md`, `HANDOFF.md` -- new companion docs.
+  - `TODO.md` -- updated with tonight's changes and pending playtest items.
+- Validation run: none yet -- no automated test suite exists for cabinet gameplay (Studio-only, per `AGENTS.md`/`CLAUDE.md`: "Do not claim a feature works until it has been tested in Studio"). See `TODO.md` for the exact Studio test steps for all three cabinets.
+- Findings/blockers:
+  - Cabinet01's `TILT_DEGREES` sign, camera framing, and exact flipper-vs-bumper placement are all authored guesses, explicitly flagged as such in `Cabinet01Builder.luau`'s doc comment -- expect to tune these live.
+  - A deeper, NOT-yet-fixed root-cause candidate was found during investigation (not acted on this session, per "minimum viable change"): `PinballKit/Migrations/CabinetUpgrade.luau` has two structurally different flipper-origin conventions (an "analytic" shared-base-axis path and a "marker" pre-negated-axis path) that both feed the same fixed-sign `SWEEP_DIRECTION` table in `CabinetBuilder.attachFlipperHinge` -- this could independently cause an asymmetric (one-side-only) hinge-direction bug distinct from the whole-table sign flip just applied. Only pursue this if live testing shows WilliamsCabinet/WilliamsCabinetPlayground still have a flipper-direction problem on only ONE side after tonight's `SWEEP_DIRECTION` fix.
+- Next owner and action: human (Gabe) -- playtest all three cabinets per `TODO.md`'s Studio test steps, report back what's still wrong (if anything) so the next session can target it precisely instead of guessing.

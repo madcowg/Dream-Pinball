@@ -124,9 +124,7 @@ local CabinetBuilder = require(script.Parent:WaitForChild("CabinetBuilder"))
 local GameplayTuning = require(script.Parent:WaitForChild("GameplayTuning"))
 local PinballKit = script.Parent:WaitForChild("PinballKit")
 local PinballKitConstants = require(PinballKit:WaitForChild("Constants"))
-local Scale = require(PinballKit:WaitForChild("Scale"))
 local BallGenerator = require(PinballKit:WaitForChild("Generators"):WaitForChild("BallGenerator"))
-local PlungerGenerator = require(PinballKit:WaitForChild("Generators"):WaitForChild("PlungerGenerator"))
 local PlungerController = require(PinballKit:WaitForChild("Runtime"):WaitForChild("PlungerController"))
 local Ball = require(Data:WaitForChild("Ball"))
 local Item = require(Data:WaitForChild("Item"))
@@ -207,8 +205,20 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 	-- LaunchBall (the actual ball) is created later, at Launch() time, and
 	-- always explicitly unanchored there -- it doesn't exist yet at setup()
 	-- time, so it's never touched by this pass regardless.
+	-- BUG FIX (found 2026-08-12 while wiring a new CabinetBuilder-built
+	-- cabinet through this function): Instance:IsDescendantOf never returns
+	-- true for the instance itself, only for actual descendants. When
+	-- LeftFlipper/RightFlipper IS the flipper's own BasePart (not a Model
+	-- wrapping it -- exactly what CabinetBuilder.buildFlipper produces), the
+	-- old check below failed to exclude that Part from the auto-anchor pass,
+	-- silently forcing Anchored = true onto it and breaking its hinge. Adding
+	-- the explicit self-checks fixes this without changing behavior for the
+	-- Model-wrapping case (where the container itself is never a BasePart
+	-- anyway, so `descendant:IsA("BasePart")` already skips it upstream).
 	local function isExcludedFromAutoAnchor(descendant: Instance): boolean
-		return descendant:IsDescendantOf(leftFlipperContainer)
+		return descendant == leftFlipperContainer
+			or descendant == rightFlipperContainer
+			or descendant:IsDescendantOf(leftFlipperContainer)
 			or descendant:IsDescendantOf(rightFlipperContainer)
 			or descendant.Name == "Plunger"
 	end
@@ -309,15 +319,24 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 	-- held and springs forward on Launch, echoing the charge/release the
 	-- player already controls with R. Never touches launch velocity itself
 	-- (see PlungerGenerator.luau's header comment) -- purely visual feedback.
-	-- Origin is offset back by one ball radius so the rod's tip rests just
-	-- behind the ball's spawn point instead of inside its center.
-	local plungerAsset = PlungerGenerator.Generate({
-		Name = "LaunchPlunger",
-		Origin = launchAnchor.CFrame * CFrame.new(0, 0, Scale.BALL_DIAMETER_STUDS / 2),
-		Parent = cabinetFolder,
-		Config = {},
-	})
-	local plungerHandle = PlungerController.Attach(plungerAsset.Rod, plungerAsset.Constraint, plungerAsset.MaxRetractStuds)
+	-- OPTIONAL, found by name -- same pattern as the backboard displays
+	-- below (found individually, skipped if absent, no error). Generated
+	-- once via PinballKit's CabinetUpgrade.GenerateNewPlunger (Command Bar),
+	-- the same way flippers/bumpers/lane dividers are, rather than this
+	-- module creating it at runtime -- every WilliamsCabinet asset is baked
+	-- and Explorer-visible the same way, none of them appear-on-Play only.
+	local plungerHandle: PlungerController.PlungerHandle? = nil
+	local existingPlunger = cabinetFolder:FindFirstChild("LaunchPlunger", true)
+	if existingPlunger ~= nil and existingPlunger:IsA("Model") then
+		local plungerRod = existingPlunger:FindFirstChild("Rod", true)
+		local plungerConstraint = existingPlunger:FindFirstChild("PlungerConstraint", true)
+		if plungerRod ~= nil and plungerRod:IsA("BasePart") and plungerConstraint ~= nil and plungerConstraint:IsA("PrismaticConstraint") then
+			-- UpperLimit is exactly the MaxRetractStuds PlungerGenerator set it
+			-- to -- reading it back here avoids needing a separate stored
+			-- attribute just to reconstruct the controller.
+			plungerHandle = PlungerController.Attach(plungerRod, plungerConstraint, plungerConstraint.UpperLimit)
+		end
+	end
 
 	-- Optional backboard display -- see module doc comment above. Each is
 	-- found independently so the team can add them one at a time; a missing
@@ -678,8 +697,10 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 		-- Springs the plunger forward regardless of whether this launch
 		-- attempt is actually accepted below -- the player already released
 		-- R, so the visual should always respond to that, not just to a
-		-- successful launch.
-		plungerHandle:Release(power)
+		-- successful launch. No-op if this cabinet has no baked plunger.
+		if plungerHandle ~= nil then
+			plungerHandle:Release(power)
+		end
 		if engagedPlayer ~= player then
 			warn(label .. ": rejected LAUNCH from " .. player.Name .. " -- not engaged with this cabinet")
 			return
@@ -902,7 +923,9 @@ function CabinetGameplay.setup(cabinetFolder: Instance, label: string): Gameplay
 
 	local handle: GameplayHandle = {
 		BeginCharge = function(_player: Player)
-			plungerHandle:BeginCharge()
+			if plungerHandle ~= nil then
+				plungerHandle:BeginCharge()
+			end
 		end,
 		Launch = launch,
 		UseItem = useItem,

@@ -85,7 +85,16 @@ local MOTOR_DIRECTION: { [Side]: number } = { Left = 1, Right = -1 }
 --- Which way pressing Q/E sweeps each flipper, independent of
 --- MOTOR_DIRECTION (which only orients the rest-angle rotation). Kept as a
 --- separate table since flipping one must not flip the other.
-local SWEEP_DIRECTION: { [Side]: number } = { Left = -1, Right = 1 }
+---
+--- FLIPPED 2026-08-12: live Studio testing (WilliamsCabinet and
+--- WilliamsCabinetPlayground, both hand-built/marker-built via
+--- attachFlipperHinge below, not buildFlipper) showed both flippers
+--- responded backwards under the correct, natural key mapping (Q="Left",
+--- E="Right" in FlipperInputController.local.luau -- see that file, which
+--- must NOT be re-inverted to compensate for this). The defect was here:
+--- this table's Left/Right signs, not the key mapping. Old value was
+--- { Left = -1, Right = 1 }.
+local SWEEP_DIRECTION: { [Side]: number } = { Left = 1, Right = -1 }
 
 local function ensureCollisionGroups(flipperGroup: string, playfieldGroup: string)
 	pcall(function()
