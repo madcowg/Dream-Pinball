@@ -24,13 +24,20 @@ export type ControllerState = {
 }
 
 function ComponentRegistry.NewState(model: Model): ControllerState
+	-- Weak-keyed: balls are destroyed and recreated on every launch/relaunch
+	-- for the lifetime of a cabinet's controllers, which can live for the
+	-- whole server session. Without this, every destroyed ball leaves a
+	-- permanent stale entry here (and keeps its Instance alive), growing
+	-- unbounded over a long play session instead of being collected once
+	-- nothing else references that ball.
+	local lastActivationByBall = setmetatable({}, { __mode = "k" }) :: { [BasePart]: number }
 	return {
 		Model = model,
 		Enabled = true,
 		Destroyed = false,
 		Connections = {},
 		LastActivationGlobal = nil,
-		LastActivationByBall = {},
+		LastActivationByBall = lastActivationByBall,
 	}
 end
 
@@ -102,6 +109,15 @@ end
 
 function ComponentRegistry.SetEnabled(state: ControllerState, enabled: boolean)
 	state.Enabled = enabled
+end
+
+-- Clears per-ball cooldown history in place (table.clear, not a fresh
+-- table assignment) so the weak-keyed table NewState creates stays weak --
+-- callers doing `state.LastActivationByBall = {}` on Reset would otherwise
+-- silently replace it with a plain (strong-keyed) table, undoing the leak
+-- fix the first time Reset runs.
+function ComponentRegistry.ClearBallActivations(state: ControllerState)
+	table.clear(state.LastActivationByBall)
 end
 
 -- Disconnects every tracked connection exactly once. Safe to call more than

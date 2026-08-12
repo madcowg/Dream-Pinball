@@ -15,17 +15,22 @@ including `WilliamsCabinet`) and into `WilliamsCabinet` specifically** — see
   attribute (falling back to the old flat `GameplayTuning.SCORE_PER_BOUNCE`
   constant), so each bumper/spinner/target's point value is finally
   independently configurable instead of one shared placeholder number.
-- `CabinetGameplay.luau` now generates a `PlungerGenerator` rod at
-  `LaunchAnchor` for every cabinet it wires up, and drives it from the
-  existing `BeginCharge`/`Launch` calls — hold R to pull it back, release to
-  see it spring forward. Purely cosmetic; see `PlungerGenerator.luau`'s header
-  comment for why it never touches actual launch velocity.
+- `CabinetGameplay.luau` looks for a plunger rod (by name, `"LaunchPlunger"`)
+  under `LaunchAnchor` and drives it from the existing `BeginCharge`/`Launch`
+  calls if found — hold R to pull it back, release to see it spring forward.
+  Purely cosmetic; see `PlungerGenerator.luau`'s header comment for why it
+  never touches actual launch velocity. Optional and found-by-name (same
+  pattern as the backboard displays) — a cabinet with no plunger baked just
+  has no plunger animation, no error.
 - `WilliamsCabinet`'s hand-built flippers and bumpers can be swapped for
-  PinballKit-generated ones, and new in-lane/out-lane dividers added, via the
-  generic `Migrations/CabinetUpgrade.luau` engine + `Migrations/
-  WilliamsCabinetSpec.luau`'s measured numbers. Additive-only for
-  flippers/bumpers (never touches the originals); lane dividers are plain new
-  additions since none exist today.
+  PinballKit-generated ones, and new in-lane/out-lane dividers and a plunger
+  rod added, via the generic `Migrations/CabinetUpgrade.luau` engine +
+  `Migrations/WilliamsCabinetSpec.luau`'s measured numbers. Additive-only for
+  flippers/bumpers (never touches the originals); lane dividers and the
+  plunger are plain new additions since none exist today. Every one of these
+  is baked once via the Command Bar and stays Explorer-visible from then on
+  — nothing on this list is generated only at runtime except the ball itself
+  (which inherently has to be, since it's created/destroyed every launch).
 
 ## Status
 
@@ -56,11 +61,15 @@ a script inside Studio.
   off the bumper's ancestor Model (via a new local `getPointValue` helper),
   falling back to `GameplayTuning.SCORE_PER_BOUNCE` if absent. Old hand-built
   bumpers with no attribute behave exactly as before.
-- **`CabinetGameplay.luau` plunger**: `setup()` now generates a
-  `PlungerGenerator` rod at every cabinet's `LaunchAnchor` and wires it to the
-  existing `BeginCharge`/`Launch` calls. Applies to every cabinet that calls
-  `CabinetGameplay.setup` (hand-built or `CabinetBuilder`-built), not just
-  `WilliamsCabinet` — cosmetic only, ball launch velocity is unchanged.
+- **`CabinetGameplay.luau` plunger**: `setup()` looks for a plunger rod named
+  `"LaunchPlunger"` under the cabinet folder and wires it to the existing
+  `BeginCharge`/`Launch` calls if found — optional, found-by-name, no error
+  if absent. Applies to every cabinet that calls `CabinetGameplay.setup`
+  (hand-built or `CabinetBuilder`-built), not just `WilliamsCabinet` —
+  cosmetic only, ball launch velocity is unchanged. (An earlier version
+  generated this at runtime instead of baking it — changed so every
+  WilliamsCabinet asset is Explorer-visible the same way, not a mix of
+  baked-in-Studio and appears-only-on-Play.)
 
 ### Flipper/bumper/lane generation (Studio-side, additive-only for
 flippers/bumpers)
@@ -83,29 +92,51 @@ in-lane/out-lane guide, not a short decorative section) are a separate, plain
 new addition — WilliamsCabinet has none today, so there's nothing to protect
 and no finalize step for them.
 
-**Flipper placement — two paths, current status (unresolved as of this
-writing):**
+**Flipper placement — two paths.**
 
 The analytic path (centered on `DrainTrigger`'s edge, `FlipperSize`/
 `FlipperRestAngleDegrees`/`FlipperRestTipGapStuds` deriving shaft-to-shaft —
 see `computeTableFrame`) has produced a wrong result — wrong position and/or
-wrong rest-angle direction — on **every** attempt so far on this cabinet,
-despite each individual input being a real Studio measurement. Root cause
-not yet pinned down; re-guessing a fifth correction blind isn't productive.
+wrong rest-angle direction — on multiple attempts on this cabinet, despite
+each individual input being a real Studio measurement. Root cause not
+pinned down; treat it as a fallback, not the primary path.
 
-Instead, `CabinetSpec` now supports an optional **position-only marker
-override**: if `LeftFlipperPivotMarkerName`/`LeftFlipperTipMarkerName`/
-`RightFlipperPivotMarkerName`/`RightFlipperTipMarkerName` all resolve to real
-`BasePart`s, `GenerateNewFlippers` uses their positions directly (pivot
-position + tip-minus-pivot direction) instead of the analytic derivation —
-no rotation, no sign convention, just two points per side. `WilliamsCabinetSpec.luau`
-already points these at `LeftFlipperPivotMarker`/`LeftFlipperTipMarker`/
-`RightFlipperPivotMarker`/`RightFlipperTipMarker`, which don't exist yet under
-WilliamsCabinet — **place four small Parts with those exact names** (position
-only, no rotation needed) at the correct pivot/tip locations by eye against
-the reference photo, then re-run `GenerateNewFlippers` — it switches to the
+`CabinetSpec` supports a **position-only marker override** instead: if
+`LeftFlipperPivotMarkerName`/`LeftFlipperTipMarkerName` both resolve to real
+`BasePart`s **directly under the cabinet folder** (a common mistake: placing
+them loose in `Workspace` instead of inside
+`Workspace.BakedCabinets.WilliamsCabinet` — the lookup only searches inside
+the cabinet folder), `GenerateNewFlippers` uses their positions directly
+(pivot position + tip-minus-pivot direction) for the LEFT flipper instead of
+the analytic derivation — no rotation, no sign convention, just two points.
+The RIGHT flipper is then **mirrored from the left one across the table's
+centerline** — deliberately not a second independently hand-placed pair,
+since two markers placed by eye came out visibly asymmetric on this cabinet;
+mirroring makes that impossible by construction. Height doesn't need to be
+exact either: both points are snapped to `FloorMarkerName`'s
+(`"CabinetFloor"`) own surface height + one ball radius before use, which
+also flattens the pivot-to-tip direction (pivot and tip end up at the
+identical height) — the flipper comes out parallel to the floor and centered
+on the ball automatically, regardless of how precisely the markers were
+placed vertically. `WilliamsCabinetSpec.luau` already points the two marker
+names at `LeftFlipperPivotMarker`/`LeftFlipperTipMarker` — place two small
+Parts with those exact names **inside the cabinet folder** (position only,
+no rotation needed) at the correct pivot/tip locations by eye against the
+reference photo, then re-run `GenerateNewFlippers` — it switches to the
 marker path automatically, no code change needed. The console print tells
-you which path was actually used.
+you which path was actually used. (If you placed
+`RightFlipperPivotMarker`/`RightFlipperTipMarker` earlier, delete them —
+they're unused now.)
+
+**Lane dividers are a curved lead-in + straight run, not a plain wall** — a
+straight wall only divides the lanes, it doesn't guide the ball into the
+flipper the way a real lane guide's curved bottom end does. The curve's
+`Direction` (`"Left"`/`"Right"`) is derived from which way `sideDirection`
+actually points relative to the cabinet's own `Right` vector (see
+`GenerateLaneDividers`'s comment) rather than assumed, so it bends the
+correct way regardless of this cabinet's specific handedness.
+`LaneDividerCurveRadiusStuds`/`AngleDegrees`/`InwardOffsetStuds` are all
+estimates — tune and re-run.
 
 **Step 1 — generate, in Studio's Command Bar (Edit mode):**
 
@@ -116,10 +147,11 @@ local WilliamsCabinetSpec = require(game.ReplicatedStorage.DreamPinballShared.Pi
 
 CabinetUpgrade.GenerateNewFlippers(cabinetFolder, WilliamsCabinetSpec) -- creates LeftFlipper_New / RightFlipper_New
 CabinetUpgrade.GenerateNewBumpers(cabinetFolder, WilliamsCabinetSpec)  -- creates Bumper_New_1, Bumper_New_2, ...
-CabinetUpgrade.GenerateLaneDividers(cabinetFolder, WilliamsCabinetSpec) -- creates LaneDivider_Left / LaneDivider_Right
+CabinetUpgrade.GenerateLaneDividers(cabinetFolder, WilliamsCabinetSpec) -- creates LaneDivider_Left(_Curve) / LaneDivider_Right(_Curve)
+CabinetUpgrade.GenerateNewPlunger(cabinetFolder, WilliamsCabinetSpec)  -- creates LaunchPlunger
 ```
 
-All three are safe to re-run — each call replaces its own previous output
+All four are safe to re-run — each call replaces its own previous output
 (matched by name/GenerationId), never the hand-built originals. Compare the
 new ones against the old ones. Per `architecture.md`'s own repeated warning
 that yaw/orientation reasoning in this project has been wrong before without
@@ -264,6 +296,8 @@ Runtime controller):
 | Rollover lane switch | `ObstacleGenerator.GenerateRollover` | `RolloverController` | Non-colliding, flush with the floor |
 | In-lane/out-lane divider | `LaneGenerator.GenerateDivider` | `LaneController` | Ball-scaled low guide wall, not a boundary wall; carries a programmable rollover trigger + indicator light (level decides what a pass does) |
 | Plunger rod | `PlungerGenerator` | `PlungerController` | Servo-driven `PrismaticConstraint`; cosmetic only, never sets ball velocity (see its header comment) |
+| Inlane/outlane pair | `InlaneOutlaneGenerator` | `LaneSwitchController` | One shared divider rail + two independent rollover triggers; enter/exit latch (not a time cooldown), see "Lower playfield composition" below |
+| Lower-playfield assembly | `LowerPlayfieldGenerator` | `LowerPlayfieldController` | Composes a mirrored flipper pair, slingshot pair, inlane/outlane pair, and center drain from one `Origin` |
 
 ### Flipper: mechanism reused, tuning intentionally stronger
 
@@ -291,6 +325,75 @@ loses less of its own velocity and imparts more to the ball on contact
 a ball landing on the flipper mid-swing doesn't visibly bog the motor down.
 These are a reasoned starting point, not playtested numbers the way the
 original baseline was — expect to retune live.
+
+### Lower playfield composition
+
+`LowerPlayfieldGenerator` builds a mirrored flipper pair, slingshot pair,
+inlane/outlane pair, and center drain from one `Origin` -- a standalone,
+generic PinballKit capability, not wired into `WilliamsCabinet` (that cabinet
+keeps its own hand-built/marker-driven track, `Migrations/CabinetUpgrade.luau`,
+untouched). Every piece is also usable on its own:
+
+```luau
+local PinballKit = require(game.ReplicatedStorage.DreamPinballShared.PinballKit)
+local preset = PinballKit.Presets.WilliamsClassicLowerPlayfield
+
+local flipperConfig = table.clone(preset.LowerPlayfield.Flipper)
+flipperConfig.CollisionGroup = "MyTableFlippers" -- required, per-cabinet
+
+local config = table.clone(preset.LowerPlayfield)
+config.Flipper = flipperConfig
+
+local assembly = PinballKit.Generators.LowerPlayfieldGenerator.Generate({
+	Name = "LowerPlayfield",
+	Parent = workspace.GeneratedPinballAssets,
+	Origin = workspace.PlayfieldOrigin.CFrame,
+	Config = config,
+})
+
+local controller = PinballKit.Runtime.LowerPlayfieldController.Attach(assembly, {
+	FlipperMotorSpeed = preset.LowerPlayfieldRuntime.FlipperMotorSpeed,
+	OnBallDrained = function(ball) ball:Destroy() end,
+})
+```
+
+Supporting geometry modules, each independently reusable:
+
+- `Geometry/MirrorTransform.luau` -- left/right mirroring primitives. This
+  codebase has TWO different, individually-correct mirroring conventions
+  (a true linear reflection for generic placement, vs. angle/offset
+  negation for a flipper paddle's own near-planar symmetry) -- read its
+  header comment before using it on a new shape.
+- `Geometry/LanePath.luau` -- perpendicular-offset lane boundaries from a
+  centerline, and `MinimumClearance`-checked width validation.
+- `Geometry/GuideRailBuilder.luau` -- the per-segment wall-building math
+  `LaneGenerator` and `InlaneOutlaneGenerator` both use, with optional
+  rounded end caps.
+- `Geometry/FlipperGeometry.luau` -- pure math (no Instances): resting/active
+  tip gap, swept-envelope sampling, and `SolvePivotOffsetForCenterGap`, the
+  formula that solves pivot spacing for a desired center-drain gap on a flat,
+  mirrored-pair layout (a fresh derivation for the generic case, not a fix
+  for `WilliamsCabinetSpec.luau`'s own marker-override workaround).
+- `Validation/LowerPlayfieldValidator.luau` -- dimension, 0.01-stud symmetry,
+  and sweep-vs-static-geometry checks against an already-generated assembly.
+  Run it from the Command Bar after generating (see
+  `Demo/GenerateLowerPlayfieldTest.luau`).
+
+`FlipperGenerator`'s optional `ColliderMode = "SegmentedCapsule"` (rounded
+root + tapered body + rounded tip, each overlapping the next) is opt-in --
+the default `"SingleBox"` collider (this section's locked baseline) is
+unchanged for every existing caller. Only
+`Presets.WilliamsClassicLowerPlayfield.Flipper` opts into the capsule mode;
+verify it live in Studio across the full stroke before trusting it on a real
+table, the same as any other flipper-geometry change in this project's
+history.
+
+`server/PinballMechanisms.luau` (`ServerScriptService/DreamPinballServer/`) is
+a generic flipper-input dispatcher for any `LowerPlayfieldGenerator`-based
+cabinet -- a cabinet-id-keyed registry with per-cabinet ownership checks and
+rate limiting, on the SAME shared `FlipperInputRemote` `WilliamsCabinet.
+server.luau` already uses. Both listeners coexist independently; neither
+touches the other.
 
 ### Physics-first design choices this round
 

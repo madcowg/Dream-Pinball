@@ -12,8 +12,32 @@ local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 
 local cabinet = Workspace:WaitForChild("BakedCabinets"):WaitForChild("WilliamsCabinet")
-local leftFlipper = cabinet:FindFirstChild("LeftFlipper", true) :: BasePart?
-local rightFlipper = cabinet:FindFirstChild("RightFlipper", true) :: BasePart?
+
+-- LeftFlipper/RightFlipper can resolve to either a plain hand-built BasePart
+-- (this cabinet's original shape) or a FlipperGenerator-built Model (the
+-- Root/Visuals/Colliders/Mechanism/... standard hierarchy, with the real
+-- collidable part at Mechanism.Flipper) -- same duality CabinetUpgrade.luau
+-- already handles for slingshots/flippers. The old `:: BasePart?` cast here
+-- didn't check either way at runtime, so it silently produced a Model and
+-- crashed the first time .Touched was accessed on it.
+local function resolveFlipperPart(flipper: Instance?): BasePart?
+	if flipper == nil then
+		return nil
+	end
+	if flipper:IsA("BasePart") then
+		return flipper
+	end
+	if flipper:IsA("Model") then
+		local mechanismPart = flipper:FindFirstChild("Flipper", true)
+		if mechanismPart ~= nil and mechanismPart:IsA("BasePart") then
+			return mechanismPart
+		end
+	end
+	return nil
+end
+
+local leftFlipper = resolveFlipperPart(cabinet:FindFirstChild("LeftFlipper", true))
+local rightFlipper = resolveFlipperPart(cabinet:FindFirstChild("RightFlipper", true))
 
 local function log(message: string)
 	print("[WilliamsCabinetDiagnostics] " .. message)

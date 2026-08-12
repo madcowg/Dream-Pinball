@@ -65,7 +65,7 @@ function RolloverController.Attach(
 			end
 		end,
 		Reset = function(_self)
-			state.LastActivationByBall = {}
+			ComponentRegistry.ClearBallActivations(state)
 		end,
 		SetEnabled = function(_self, enabled: boolean)
 			ComponentRegistry.SetEnabled(state, enabled)

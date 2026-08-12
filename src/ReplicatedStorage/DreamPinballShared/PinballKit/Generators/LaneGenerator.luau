@@ -25,8 +25,8 @@
 
 local PrimitiveFactory = require(script.Parent.Parent.Geometry.PrimitiveFactory)
 local PathBuilder = require(script.Parent.Parent.Geometry.PathBuilder)
+local GuideRailBuilder = require(script.Parent.Parent.Geometry.GuideRailBuilder)
 local LightGenerator = require(script.Parent.LightGenerator)
-local Constants = require(script.Parent.Parent.Constants)
 local Scale = require(script.Parent.Parent.Scale)
 local Types = require(script.Parent.Parent.Types)
 local GeometryValidator = require(script.Parent.Parent.Validation.GeometryValidator)
@@ -89,6 +89,11 @@ export type LaneDividerAsset = Types.GeneratedAsset & {
 	Segments: { BasePart },
 	Trigger: BasePart?,
 	TriggerLight: LightGenerator.LightAsset?,
+	-- Where the path actually ends (position + orientation) -- lets a caller
+	-- chain a second divider (e.g. a straight run continuing from a curved
+	-- lead-in) starting exactly where this one left off, instead of
+	-- recomputing the path's endpoint independently.
+	EndCFrame: CFrame,
 }
 
 function LaneGenerator.GenerateDivider(options: Types.GenerateOptions<LaneDividerConfig>): LaneDividerAsset
@@ -109,35 +114,16 @@ function LaneGenerator.GenerateDivider(options: Types.GenerateOptions<LaneDivide
 	})
 
 	local path = PathBuilder.Build(options.Origin, config.Path)
-	local overlap = Constants.DEFAULT_SEGMENT_OVERLAP_STUDS
-	local segments: { BasePart } = {}
-
-	for segmentIndex = 1, #path.Samples - 1 do
-		local startSample = path.Samples[segmentIndex]
-		local endSample = path.Samples[segmentIndex + 1]
-		local segmentLength = (endSample.Position - startSample.Position).Magnitude
-		local midpointPosition = (startSample.Position + endSample.Position) / 2
-		local up = startSample.Up
-		local right = startSample.Right
-		local tangent = startSample.Tangent
-
-		local wallCenter = midpointPosition + (up * (height / 2))
-		local wallCFrame = CFrame.fromMatrix(wallCenter, right, up, -tangent)
-
-		local segment = PrimitiveFactory.CreatePart({
-			Name = string.format("LaneWall_%d", segmentIndex),
-			Size = Vector3.new(thickness, height, segmentLength + overlap),
-			CFrame = wallCFrame,
-			Role = "Collider",
-			Material = config.Material or Enum.Material.Metal,
-			Color = config.Color or BrickColor.new("Really black"),
-			Parent = hierarchy.Folders.Colliders,
-			CollisionGroup = config.CollisionGroup,
-		})
-		segment.CustomPhysicalProperties = WALL_PHYSICAL_PROPERTIES
-
-		table.insert(segments, segment)
-	end
+	local wallResult = GuideRailBuilder.BuildWallSegments(path, {
+		Height = height,
+		Thickness = thickness,
+		Material = config.Material or Enum.Material.Metal,
+		Color = config.Color or BrickColor.new("Really black"),
+		CollisionGroup = config.CollisionGroup,
+		PhysicalProperties = WALL_PHYSICAL_PROPERTIES,
+		SegmentNamePrefix = "LaneWall",
+	}, hierarchy.Folders.Colliders)
+	local segments = wallResult.Segments
 
 	local trigger: BasePart? = nil
 	local triggerLight: LightGenerator.LightAsset? = nil
@@ -191,6 +177,7 @@ function LaneGenerator.GenerateDivider(options: Types.GenerateOptions<LaneDivide
 		Segments = segments,
 		Trigger = trigger,
 		TriggerLight = triggerLight,
+		EndCFrame = path.EndCFrame,
 	}
 end
 

@@ -12,6 +12,7 @@ Read `AGENTS.md`, `architecture.md`, and `TODO.md` before changing code. Follow 
 - Do not add dependencies without approval.
 - Provide exact Roblox Studio playtest instructions after code changes.
 - Do not claim a feature works until it has been tested in Studio.
+- When the user says "screenshot" without a path, they mean the most recent file in `C:\Users\gabri\OneDrive\Pictures\Screenshots` (Windows screenshot folder) -- read it directly from there, do not ask them to attach it.
 
 ## Review mode
 

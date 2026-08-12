@@ -10,6 +10,23 @@ local REMOTE_NAME = "FlipperInputRemote"
 --- never trust client-provided values.
 local FlipperRemotes = {}
 
+export type Side = "Left" | "Right"
+
+-- Shared validation for this remote's payload, so every server-side listener
+-- (WilliamsCabinet.server.luau, PinballMechanisms.luau) rejects the exact
+-- same malformed payloads instead of maintaining two independent copies of
+-- the same typeof/equality checks that could silently drift apart. Returns
+-- the narrowed (side, pressed) pair, or nil if invalid.
+function FlipperRemotes.ValidateInput(side: unknown, pressed: unknown): (Side?, boolean?)
+	if typeof(side) ~= "string" or (side ~= "Left" and side ~= "Right") then
+		return nil, nil
+	end
+	if typeof(pressed) ~= "boolean" then
+		return nil, nil
+	end
+	return side :: Side, pressed
+end
+
 function FlipperRemotes.getFlipperInputRemote(): RemoteEvent
 	if RunService:IsServer() then
 		local existing = ReplicatedStorage:FindFirstChild(REMOTE_NAME)

@@ -28,9 +28,19 @@ export type FlipperAssetLike = {
 	Side: CabinetBuilder.Side,
 }
 
+export type FlipperState = "Resting" | "Rising" | "Held" | "Returning" | "Disabled"
+
 export type FlipperHandle = Types.Controller & {
 	SetPressed: (self: FlipperHandle, pressed: boolean) -> (),
+	GetState: (self: FlipperHandle) -> FlipperState,
 }
+
+-- Pragmatic state classification (spec section 14) built entirely from the
+-- hinge's own CurrentAngle/AngularVelocity -- no separate state machine to
+-- keep in sync with the real physics. CurrentAngle is in degrees (Roblox's
+-- HingeConstraint convention, unlike CFrame.Angles' radians).
+local REST_ANGLE_THRESHOLD_DEGREES = 2
+local MOVING_ANGULAR_SPEED_THRESHOLD = 0.5
 
 function FlipperController.Attach(asset: FlipperAssetLike, motorSpeed: number?): FlipperHandle
 	local speed = motorSpeed or DEFAULT_MOTOR_SPEED
@@ -52,9 +62,33 @@ function FlipperController.Attach(asset: FlipperAssetLike, motorSpeed: number?):
 		applyPressed(nextPressed)
 	end
 
+	local function getState(): FlipperState
+		if state.Destroyed or not state.Enabled then
+			return "Disabled"
+		end
+
+		local currentAngleDegrees = math.abs(asset.Hinge.CurrentAngle)
+		local angularSpeed = math.abs(asset.Hinge.AngularVelocity)
+
+		if pressed then
+			if angularSpeed > MOVING_ANGULAR_SPEED_THRESHOLD then
+				return "Rising"
+			end
+			return "Held"
+		end
+
+		if currentAngleDegrees <= REST_ANGLE_THRESHOLD_DEGREES then
+			return "Resting"
+		end
+		return "Returning"
+	end
+
 	return {
 		SetPressed = function(_self, nextPressed: boolean)
 			setPressed(nextPressed)
+		end,
+		GetState = function(_self)
+			return getState()
 		end,
 		Activate = function(_self, _ball, _context)
 			setPressed(true)

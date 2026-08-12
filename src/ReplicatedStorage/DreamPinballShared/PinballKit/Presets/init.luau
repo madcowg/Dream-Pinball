@@ -20,5 +20,6 @@ function Presets.Extend<T>(base: T, overrides: { [string]: any }): T
 end
 
 Presets.WilliamsClassic = require(script.WilliamsClassic)
+Presets.WilliamsClassicLowerPlayfield = require(script.WilliamsClassicLowerPlayfield)
 
 return Presets
